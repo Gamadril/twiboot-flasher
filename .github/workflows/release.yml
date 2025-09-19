@@ -1,0 +1,133 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: twiboot-flasher
+            asset_name: twiboot-flasher-linux-x86_64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact_name: twiboot-flasher
+            asset_name: twiboot-flasher-linux-aarch64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+
+    - name: Install cross-compilation tools (Linux ARM64)
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+
+    - name: Configure cross-compilation (Linux ARM64)
+      if: matrix.target == 'aarch64-unknown-linux-gnu'
+      run: |
+        echo '[target.aarch64-unknown-linux-gnu]' >> ~/.cargo/config.toml
+        echo 'linker = "aarch64-linux-gnu-gcc"' >> ~/.cargo/config.toml
+
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target }}
+
+    - name: Strip binary
+      run: |
+        if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then
+          aarch64-linux-gnu-strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        else
+          strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        fi
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.asset_name }}
+        path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Display structure of downloaded files
+      run: ls -la artifacts/
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.event.inputs.tag }}
+        release_name: Release ${{ github.event.inputs.tag }}
+        body: |
+          ## TWI Bootloader Flasher ${{ github.event.inputs.tag }}
+          
+          Rust implementation of the TWI/I2C bootloader flasher for AVR microcontrollers.
+          
+          ### Downloads
+          - **Linux x86_64**: `twiboot-flasher-linux-x86_64`
+          - **Linux ARM64**: `twiboot-flasher-linux-aarch64`
+          
+          ### Usage
+          ```bash
+          # Show bootloader info
+          ./twiboot-flasher 0 0x0F
+          
+          # Flash firmware
+          ./twiboot-flasher 0 0x0F firmware.hex
+          ```
+          
+          ### Requirements
+          - Linux system with I2C support
+          - I2C device permissions (root or i2c group membership)
+          - Compatible TWI bootloader firmware on target microcontroller
+        draft: false
+        prerelease: false
+
+    - name: Upload Linux x86_64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: artifacts/twiboot-flasher-linux-x86_64/twiboot-flasher
+        asset_name: twiboot-flasher-linux-x86_64
+        asset_content_type: application/octet-stream
+
+    - name: Upload Linux ARM64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: artifacts/twiboot-flasher-linux-aarch64/twiboot-flasher
+        asset_name: twiboot-flasher-linux-aarch64
+        asset_content_type: application/octet-stream
+

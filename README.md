@@ -1,6 +1,6 @@
 # TWI Bootloader Flasher
 
-Rust implementation of the TWI/I2C bootloader flasher for AVR microcontrollers.
+Rust implementation of the [TWI/I2C bootloader](https://github.com/orempel/twiboot) flasher for AVR microcontrollers.
 
 ## Usage
 
@@ -53,12 +53,6 @@ Version: TWIBOOT v3.2
 Chip signature: 0x1E 0x93 0x0C
 Device: I2C address 0x0F
 Flash size: 0x2000 / 8192 bytes (0x40 bytes/page)
-```
-
-**Write mode:**
-```
-Writing flash from firmware.hex
-Verifying flash...
 ```
 
 **Writing firmware:**

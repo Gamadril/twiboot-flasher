@@ -30,6 +30,10 @@ struct Cli {
     #[arg(short = 'n', long = "no-verify")]
     no_verify: bool,
 
+    /// Wait for device to be powered on and bootloader to start
+    #[arg(short = 'w', long = "wait")]
+    wait: bool,
+
 }
 
 fn parse_address(s: &str) -> Result<u8, String> {
@@ -56,11 +60,11 @@ fn main() -> Result<()> {
     // Create I2C device
     let i2c = TwiI2CDevice::new(&device_path, cli.address)?;
     
-    // Create bootloader instance
+    // Create bootloader instance (addressing mode will be auto-detected by version)
     let mut bootloader = TwiBootloader::new(i2c);
 
     // Connect to bootloader
-    bootloader.connect()?;
+    bootloader.connect(cli.wait)?;
 
 
     // If no file specified, just show info and exit
@@ -79,8 +83,8 @@ fn main() -> Result<()> {
         }
 
         println!("Writing flash from {}", filepath.display());
-        let bootloader_start = bootloader.get_bootloader_start();
-        let data = read_file_with_bootloader_info(&filepath, FileFormat::from_extension(&filepath), bootloader_start)?;
+        let flash_size = bootloader.flash_size();
+        let data = read_file_with_bootloader_info(&filepath, FileFormat::from_extension(&filepath), flash_size)?;
         bootloader.write_flash(&data)?;
 
         if !cli.no_verify {

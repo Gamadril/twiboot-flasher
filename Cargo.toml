@@ -1,9 +1,9 @@
 [package]
 name = "twiboot-flasher"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Gamadril"]
-description = "TWI/I2C bootloader flasher for AVR microcontrollers"
+description = "TWI/I2C bootloader flasher"
 license = "MIT"
 
 [[bin]]

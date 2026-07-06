@@ -2,6 +2,8 @@
 
 Rust implementation of the TWI/I2C bootloader flasher supporting both AVR microcontrollers (16-bit addressing) and WCH CH32V microcontrollers (32-bit addressing).
 
+ARM64 and x86_64 builds can be found in `Releases`
+
 ## Usage
 
 ```bash
